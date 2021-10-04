@@ -2,14 +2,15 @@ package queue
 
 import (
 	"errors"
+	"fmt"
 	"github.com/ozgurrahmidonmez/taskpool/model"
 	"sync"
 )
 
 type Queue struct {
-	mu sync.Mutex
+	mu       sync.Mutex
 	capacity int
-	q  []model.Data
+	q        []model.Data
 }
 
 type FifoQueue interface {
@@ -33,6 +34,8 @@ func (q *Queue) Push(item model.Data) error {
 		q.q = append(q.q, item)
 		return nil
 	}
+	fmt.Println("size : ", len(q.q))
+	fmt.Println("capacity : ", q.capacity)
 	return errors.New("queue is full")
 }
 
@@ -56,10 +59,10 @@ func (q *Queue) Pull() (model.Data, error) {
 		q.q = q.q[1:]
 		return item, nil
 	}
-return 0, errors.New("queue is empty")
+	return 0, errors.New("queue is empty")
 }
 
 // NewQueue creates an empty queue with desired capacity
 func NewQueue(capacity int) *Queue {
-	return &Queue{capacity: capacity, q: make([]model.Data, 0, capacity),}
+	return &Queue{capacity: capacity, q: make([]model.Data, capacity)}
 }

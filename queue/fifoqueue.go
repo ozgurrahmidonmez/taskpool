@@ -15,7 +15,6 @@ type Queue struct {
 
 type FifoQueue interface {
 	Push(item model.Data) error
-	PushFront(item model.Data) error
 	Pull() (model.Data, error)
 	Size() int
 }
@@ -36,17 +35,6 @@ func (q *Queue) Push(item model.Data) error {
 	}
 	fmt.Println("size : ", len(q.q))
 	fmt.Println("capacity : ", q.capacity)
-	return errors.New("queue is full")
-}
-
-// PushFront inserts the item into the queue - as first item to be polled
-func (q *Queue) PushFront(item model.Data) error {
-	q.mu.Lock()
-	defer q.mu.Unlock()
-	if len(q.q) < q.capacity {
-		q.q = append([]model.Data{item}, q.q)
-		return nil
-	}
 	return errors.New("queue is full")
 }
 

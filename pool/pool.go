@@ -16,69 +16,69 @@ type Pool interface {
 }
 
 type pool struct {
-	maxWorkers int
-	in         chan model.Data
-	taskQueue  chan model.Data
-	taskDef    Work
+	maxWorkers           int
+	in                   chan model.Data
+	taskQueue            chan model.Data
+	taskDef              Work
 	done                 chan struct{}
 	waitingQueue         queue.FifoQueue
 	waitingQueueCapacity int
 }
 
-func (p *pool) processWaitingQueue(){
-	go func(){
+func (p *pool) processWaitingQueue() {
+	go func() {
 	Loop:
-		for p.waitingQueue.Size() > 0{
-			item,err := p.waitingQueue.Pull()
+		for p.waitingQueue.Size() > 0 {
+			item, err := p.waitingQueue.Pull()
 			if err != nil {
 				fmt.Println(err)
 				continue Loop
 			}
 			select {
-				// dequeue
-				case p.in <- item:
-					continue Loop
-				case <-time.After(time.Millisecond * 100):
-					if err := p.waitingQueue.PushFront(item); err != nil {
-						fmt.Println(err)
-					}
-					continue Loop
+			// dequeue
+			case p.in <- item:
+				continue Loop
+			case <-time.After(time.Millisecond * 100):
+				if err := p.waitingQueue.Push(item); err != nil {
+					fmt.Println(err)
+				}
+				continue Loop
 			}
 		}
 	}()
 }
 
-func (p *pool) Dispatch(){
+func (p *pool) Dispatch() {
 	p.processWaitingQueue()
 	var wg sync.WaitGroup
 	var workerCount int
 	go func() {
 		defer close(p.in)
 		defer close(p.taskQueue)
-		Loop:
+	Loop:
 		for {
 			select {
-				case d := <- p.in:
-					select {
-						case p.taskQueue <- d:
-						default:
-							if workerCount < p.maxWorkers {
-								wg.Add(1)
-								go p.startWorker(d, &wg)
-								workerCount++
-							}else{
-								// put in a waiting queue
-								if err := p.waitingQueue.Push(d); err != nil {
-									fmt.Println(err)
-								}
-							}
+			case d := <-p.in:
+				select {
+				case p.taskQueue <- d:
+				default:
+					if workerCount < p.maxWorkers {
+						wg.Add(1)
+						go p.startWorker(d, &wg)
+						workerCount++
+					} else {
+						// put in a waiting queue
+						if err := p.waitingQueue.Push(d); err != nil {
+							fmt.Println(err)
+						}
 					}
-				case <-time.After(time.Millisecond * 1000):
-					if workerCount > 0 && p.KillAnyOneWorker(){
-						workerCount--
-					}
-				case <-p.done:
-					break Loop
+				}
+			case <-time.After(time.Millisecond * 1000):
+				if workerCount > 0 && p.KillAnyOneWorker() {
+					workerCount--
+				}
+			case <-p.done:
+				break Loop
 			}
 		}
 		for workerCount > 0 {
@@ -90,11 +90,11 @@ func (p *pool) Dispatch(){
 	}()
 }
 
-func (p *pool) startWorker(d model.Data,wg *sync.WaitGroup){
+func (p *pool) startWorker(d model.Data, wg *sync.WaitGroup) {
 	// execute task first then start consuming
 	p.taskDef(d)
 	for t := range p.taskQueue {
-		if t == nil{
+		if t == nil {
 			wg.Done()
 			return
 		}
@@ -111,29 +111,18 @@ func (p *pool) KillAnyOneWorker() bool {
 	}
 }
 
-func (p *pool) Stop(){
+func (p *pool) Stop() {
 	p.done <- struct{}{}
 }
 
-func (p *pool) Submit(d model.Data){
+func (p *pool) Submit(d model.Data) {
 	p.in <- d
 }
 
-
-func New(maxWorkers int,work Work,waitingQueueCapacity int) Pool {
-	var fifoQueue  = queue.NewQueue(100.000)
-	p := &pool{maxWorkers,make(chan model.Data),make(chan model.Data),work,make(chan struct{}),
-		fifoQueue,waitingQueueCapacity}
+func New(maxWorkers int, work Work, waitingQueueCapacity int) Pool {
+	var fifoQueue = queue.NewQueue(100.000)
+	p := &pool{maxWorkers, make(chan model.Data), make(chan model.Data), work, make(chan struct{}),
+		fifoQueue, waitingQueueCapacity}
 	p.Dispatch()
 	return p
 }
-
-
-
-
-
-
-
-
-
-

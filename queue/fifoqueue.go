@@ -52,5 +52,5 @@ func (q *Queue) Pull() (model.Data, error) {
 
 // NewQueue creates an empty queue with desired capacity
 func NewQueue(capacity int) *Queue {
-	return &Queue{capacity: capacity, q: make([]model.Data, capacity)}
+	return &Queue{capacity: capacity, q: make([]model.Data, 0, capacity)}
 }

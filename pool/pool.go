@@ -120,7 +120,7 @@ func (p *pool) Submit(d model.Data) {
 }
 
 func New(maxWorkers int, work Work, waitingQueueCapacity int) Pool {
-	var fifoQueue = queue.NewQueue(100.000)
+	var fifoQueue = queue.NewQueue(waitingQueueCapacity)
 	p := &pool{maxWorkers, make(chan model.Data), make(chan model.Data), work, make(chan struct{}),
 		fifoQueue, waitingQueueCapacity}
 	p.Dispatch()
